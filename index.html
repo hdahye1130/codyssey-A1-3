@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MOIRÉ</title>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <header class="navbar">
+        <a href="#home" class="logo">
+            MOIRÉ
+        </a>
+
+        <nav>
+            <a href="#home">HOME</a>
+            <a href="#my-things">MY THINGS</a>
+            <a href="#pattern">PATTERN</a>
+            <a href="#discover">DISCOVER</a>
+        </nav>
+    </header>
+
+
+    <main>
+
+        <!-- HOME -->
+        <section id="home" class="hero">
+
+            <div class="hero-content">
+
+                <p class="definition">
+                    서로 다른 무늬가 겹칠 때 나타나는 새로운 패턴.
+                </p>
+
+                <h1>
+                    MOIRÉ
+                </h1>
+
+                <h2>
+                    당신이 좋아해온 것들 사이에는,<br>
+                    아직 발견하지 못한 패턴이 있습니다.
+                </h2>
+
+                <button
+                    id="start-button"
+                    type="button"
+                >
+                    START
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- MY THINGS -->
+        <section
+            id="my-things"
+            class="my-things-section"
+        >
+
+            <div class="section-header">
+
+                <p class="section-label">
+                    MY THINGS
+                </p>
+
+                <h2>
+                    좋아하는 것들을 하나씩 모아보세요.
+                </h2>
+
+                <p class="section-description">
+                    사람, 음악, 작품, 장소, 풍경, 음식, 스타일, 순간…
+                    무엇이든 괜찮아요.
+                </p>
+
+            </div>
+
+
+            <div class="input-card">
+
+                <label for="thing-name">
+                    좋아하는 것
+                </label>
+
+                <input
+                    type="text"
+                    id="thing-name"
+                    placeholder="예: Interstellar, 교토의 골목, 비 오는 밤"
+                >
+
+
+                <p class="input-title">
+                    카테고리
+                </p>
+
+                <div class="category-buttons">
+
+                    <button
+                        type="button"
+                        class="category-button"
+                        data-category="콘텐츠"
+                    >
+                        콘텐츠
+                    </button>
+
+                    <button
+                        type="button"
+                        class="category-button"
+                        data-category="음악"
+                    >
+                        음악
+                    </button>
+
+                    <button
+                        type="button"
+                        class="category-button"
+                        data-category="사람"
+                    >
+                        사람
+                    </button>
+
+                    <button
+                        type="button"
+                        class="category-button"
+                        data-category="장소·풍경"
+                    >
+                        장소·풍경
+                    </button>
+
+                    <button
+                        type="button"
+                        class="category-button"
+                        data-category="음식"
+                    >
+                        음식
+                    </button>
+
+                    <button
+                        type="button"
+                        class="category-button"
+                        data-category="패션·브랜드"
+                    >
+                        패션·브랜드
+                    </button>
+
+                    <button
+                        type="button"
+                        class="category-button"
+                        data-category="게임·취미"
+                    >
+                        게임·취미
+                    </button>
+
+                    <button
+                        type="button"
+                        class="category-button"
+                        data-category="기타"
+                    >
+                        기타
+                    </button>
+
+                </div>
+
+
+                <label for="thing-reason">
+                    왜 좋아하나요?
+                    <span>(선택)</span>
+                </label>
+
+                <textarea
+                    id="thing-reason"
+                    placeholder="예: 음악과 광활한 분위기가 좋아서"
+                ></textarea>
+
+                <p class="reason-help">
+                    이유를 적어주면 더 정확한 패턴을 찾을 수 있어요.
+                </p>
+
+
+                <button
+                    id="add-thing-button"
+                    type="button"
+                >
+                    + ADD TO MY THINGS
+                </button>
+
+            </div>
+
+
+            <button
+                id="inspiration-toggle"
+                type="button"
+            >
+                Need a little inspiration?
+            </button>
+
+
+            <div
+                id="inspiration-box"
+                class="inspiration-box hidden"
+            >
+                <p>요즘 자꾸 찾게 되는 것은?</p>
+                <p>오래 머물고 싶은 장소는?</p>
+                <p>이유 없이 끌리는 분위기는?</p>
+                <p>반복해서 보고 듣는 것은?</p>
+                <p>좋아하는 사람이나 캐릭터는?</p>
+            </div>
+
+
+            <div class="things-area">
+
+                <h3>
+                    YOUR THINGS
+                </h3>
+
+                <div
+                    id="things-list"
+                    class="things-list"
+                >
+                </div>
+
+                <p id="things-count">
+                    0 things collected.
+                </p>
+
+                <button
+                    id="find-pattern-button"
+                    type="button"
+                    disabled
+                >
+                    FIND MY PATTERN
+                </button>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <script src="js/main.js"></script>
+
+</body>
+</html>
