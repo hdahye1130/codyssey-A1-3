@@ -227,6 +227,8 @@
                 <p id="things-count">
                     0 things collected.
                 </p>
+                <p class="things-hint">3개부터 분석할 수 있어요. 더 선명한 패턴을 위해 5개 이상을 추천해요.</p>
+                <p id="form-message" class="status-message" role="status" aria-live="polite"></p>
 
                 <button
                     id="find-pattern-button"
@@ -240,9 +242,29 @@
 
         </section>
 
+        <section id="pattern" class="result-section pattern-section" aria-labelledby="pattern-title">
+            <div class="section-header"><p class="section-label">PATTERN</p><h2 id="pattern-title">Your Pattern</h2><p class="section-description">서로 다른 취향이 겹쳐 드러나는 결.</p></div>
+            <div id="analysis-state" class="analysis-state" role="status" aria-live="polite">좋아하는 것 3개를 모으면 이곳에 패턴이 나타나요.</div>
+            <div id="pattern-result" class="result-content hidden">
+                <p id="preview-notice" class="preview-notice hidden">LOCAL UI PREVIEW · AI 분석 결과가 아닌 예시 화면입니다.</p>
+                <div class="pattern-layout"><div class="moire-visual" role="img" aria-label="겹쳐지는 파스텔빛 모아레 패턴"><span>MOIRÉ</span></div><div class="pattern-copy"><p class="eyebrow">YOUR PATTERN</p><div id="pattern-keywords" class="keyword-list"></div><p id="pattern-summary" class="pattern-summary"></p><h3>Between Your Things</h3><p id="pattern-connection"></p></div></div>
+                <div class="facet-grid"><article><p class="eyebrow">MOOD</p><p id="pattern-mood"></p></article><article><p class="eyebrow">DETAIL</p><p id="pattern-detail"></p></article><article><p class="eyebrow">FEELING</p><p id="pattern-feeling"></p></article></div>
+                <div class="one-line"><p class="eyebrow">YOUR PATTERN, IN ONE SENTENCE</p><p id="pattern-one-line"></p></div>
+                <a class="pill-link" href="#discover">EXPLORE DISCOVER</a>
+            </div>
+        </section>
+
+        <section id="discover" class="result-section discover-section" aria-labelledby="discover-title">
+            <div class="section-header"><p class="section-label">DISCOVER</p><h2 id="discover-title">당신의 패턴이 닿을 수 있는 새로운 곳들.</h2><p class="section-description">익숙한 취향에서 조금 더 멀리.</p></div>
+            <p id="discover-placeholder" class="analysis-state">패턴을 찾으면 새로운 추천이 나타나요.</p>
+            <div id="discover-list" class="discover-grid hidden"></div>
+            <p id="discover-preview-notice" class="preview-notice hidden">LOCAL UI PREVIEW · 위 추천은 AI 결과가 아닌 예시입니다.</p>
+        </section>
+
     </main>
 
 
+    <script src="js/mock-data.js"></script>
     <script src="js/main.js"></script>
 
 </body>
