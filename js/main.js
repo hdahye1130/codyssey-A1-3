@@ -105,14 +105,13 @@ function renderResult(data, isPreview = false) {
     Object.entries(labels).forEach(([key, label]) => {
         const item = discover[key]; if (!item || !item.title) return;
         const card = document.createElement('article'); card.className = `discover-card discover-${key}`;
-        const visual = document.createElement('div'); visual.className = 'discover-visual'; visual.setAttribute('role', 'img'); visual.setAttribute('aria-label', `${label} 모아레 배경`); visual.textContent = label;
         const body = document.createElement('div'); body.className = 'discover-card-body';
         const eyebrow = document.createElement('p'); eyebrow.className = 'eyebrow'; eyebrow.textContent = label;
         const title = document.createElement('h3'); title.textContent = item.title;
         const creator = document.createElement('p'); creator.className = 'discover-creator'; creator.textContent = item.creator || item.country || '';
         const reason = document.createElement('p'); reason.textContent = item.reason || '';
         const match = document.createElement('p'); match.className = 'why-match'; match.textContent = item.why_match || '';
-        body.append(eyebrow, title, creator, reason, match); card.append(visual, body); list.append(card);
+        body.append(eyebrow, title, creator, reason, match); card.append(body); list.append(card);
     });
     if (list.children.length !== 4) throw new Error('Incomplete result');
     $('#preview-notice').classList.toggle('hidden', !isPreview);
