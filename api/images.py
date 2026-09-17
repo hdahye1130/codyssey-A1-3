@@ -1,6 +1,7 @@
 """Independent image lookup endpoint for MOIRÉ Discover cards."""
 import json
 import os
+import re
 import unicodedata
 from difflib import SequenceMatcher
 from http.server import BaseHTTPRequestHandler
@@ -59,27 +60,38 @@ def fetch_watch_image(title, creator=''):
     }
 
 
-def match_score(requested, candidate):
+def match_score(requested, candidate, *, is_title=True):
     def normalize(value):
         if not isinstance(value, str):
             return ''
-        value = unicodedata.normalize('NFKC', value).casefold()
-        return ' '.join(''.join(char if char.isalnum() else ' ' for char in value).split())
+        value = unicodedata.normalize('NFKD', value).casefold()
+        value = ''.join(char for char in value if not unicodedata.combining(char))
+        value = unicodedata.normalize('NFC', value)
+        value = ' '.join(''.join(char if char.isalnum() else ' ' for char in value).split())
+        if is_title:
+            # Strip only known trailing edition labels; preserve meaningful subtitles.
+            suffix = r'\s+(?:deluxe(?: edition)?|(?:\d{4} )?remaster(?:ed)?(?: \d{4})?|single|(?:\d+(?:st|nd|rd|th) )?anniversary edition)$'
+            while True:
+                base = re.sub(suffix, '', value)
+                if base == value:
+                    break
+                value = base
+        return value
 
     left, right = normalize(requested), normalize(candidate)
     if not left or not right:
         return 0.0
     if left == right or left.replace(' ', '') == right.replace(' ', ''):
         return 1.0
-    # Short names and differing numbers (e.g. sequels) require exact matches.
-    if min(len(left.replace(' ', '')), len(right.replace(' ', ''))) < 6:
-        return 0.0
+    # Keep sequel numbers significant after removing known edition labels.
     if [c for c in left if c.isdigit()] != [c for c in right if c.isdigit()]:
         return 0.0
     return SequenceMatcher(None, left, right).ratio()
 
 
-def fetch_listen_image(title, creator=''):
+def fetch_listen_image(title, creator='', image_search_title='', image_search_creator=''):
+    title = image_search_title.strip() or title
+    creator = image_search_creator.strip() or creator
     title_creator = ' '.join(part for part in (title, creator) if part).strip()
     searches = [(title_creator, 'KR'), (title_creator, 'US'), (title, 'KR'), (title, 'US')]
     item = None
@@ -98,7 +110,7 @@ def fetch_listen_image(title, creator=''):
                 # A song must match its track title, not just its enclosing album.
                 name = result.get('trackName') if entity == 'song' else result.get('collectionName')
                 title_score = match_score(title, name)
-                artist_score = match_score(creator, result.get('artistName')) if creator else 1.0
+                artist_score = match_score(creator, result.get('artistName'), is_title=False) if creator else 1.0
                 if title_score >= 0.92 and artist_score >= 0.92:
                     candidates.append(((title_score, artist_score), result))
         if candidates:
@@ -114,12 +126,14 @@ def fetch_listen_image(title, creator=''):
     }
 
 
-def fetch_read_image(title, creator='', image_search_title=''):
+def fetch_read_image(title, creator='', image_search_title='', image_search_creator=''):
+    search_title = image_search_title.strip() or title
+    search_creator = image_search_creator.strip() or creator
     searches = [
+        {'title': search_title, 'author': search_creator},
+        {'title': search_title},
         {'title': title, 'author': creator},
         {'title': title},
-        {'title': image_search_title, 'author': creator},
-        {'title': image_search_title},
     ]
     seen = set()
     match = None
@@ -142,7 +156,7 @@ def fetch_read_image(title, creator='', image_search_title=''):
             authors = item.get('author_name', [])
             if not isinstance(authors, list):
                 authors = []
-            author_score = max((match_score(creator, author) for author in authors), default=0.0) if creator else 1.0
+            author_score = max((match_score(search_creator, author, is_title=False) for author in authors), default=0.0) if search_creator else 1.0
             if title_score >= 0.92 and author_score >= 0.92:
                 candidates.append(((author_score, title_score), item))
         if candidates:
@@ -182,8 +196,8 @@ def fetch_go_image(query):
 
 IMAGE_FETCHERS = {
     'watch': lambda values: fetch_watch_image(values['title'], values['creator']),
-    'listen': lambda values: fetch_listen_image(values['title'], values['creator']),
-    'read': lambda values: fetch_read_image(values['title'], values['creator'], values.get('image_search_title', '')),
+    'listen': lambda values: fetch_listen_image(values['title'], values['creator'], values.get('image_search_title', ''), values.get('image_search_creator', '')),
+    'read': lambda values: fetch_read_image(values['title'], values['creator'], values.get('image_search_title', ''), values.get('image_search_creator', '')),
     'go': lambda values: fetch_go_image(values['search_query'] or values['title']),
 }
 
@@ -205,7 +219,7 @@ class handler(BaseHTTPRequestHandler):
             card_type = params.get('type', [''])[0].lower()
             values = {
                 key: params.get(key, [''])[0].strip()[:160]
-                for key in ('title', 'creator', 'search_query', 'image_search_title')
+                for key in ('title', 'creator', 'search_query', 'image_search_title', 'image_search_creator')
             }
             if card_type not in IMAGE_FETCHERS or not values['title']:
                 self.send_json(400, {'image_url': None})
