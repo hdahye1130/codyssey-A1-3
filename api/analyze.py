@@ -26,6 +26,7 @@ def object_schema(keys):
 
 
 RECOMMENDATION = object_schema(['title', 'creator', 'country', 'reason', 'why_match', 'search_query'])
+READ_RECOMMENDATION = object_schema([*RECOMMENDATION['required'], 'image_search_title'])
 SCHEMA = {
     'type': 'object',
     'properties': {
@@ -37,7 +38,7 @@ SCHEMA = {
             },
             'required': ['keywords', 'summary', 'connection', 'mood', 'detail', 'feeling', 'one_line', 'image_prompt'],
         },
-        'discover': {'type': 'object', 'properties': {key: RECOMMENDATION for key in ['watch', 'listen', 'read', 'go']}, 'required': ['watch', 'listen', 'read', 'go']},
+        'discover': {'type': 'object', 'properties': {key: READ_RECOMMENDATION if key == 'read' else RECOMMENDATION for key in ['watch', 'listen', 'read', 'go']}, 'required': ['watch', 'listen', 'read', 'go']},
     },
     'required': ['pattern', 'discover'],
 }
@@ -50,7 +51,7 @@ def mock_result(things):
         return {'title': title, 'creator': creator, 'country': country, 'reason': '익숙한 취향을 다른 분야로 확장하는 예시 추천이에요.', 'why_match': f'{first}와 {second} 사이의 분위기에서 출발했어요.', 'search_query': title}
     return {
         'pattern': {'keywords': ['여백', '잔잔한 대비', '발견', '겹침'], 'summary': '서로 다른 장면이 겹쳐 새로운 분위기를 만듭니다.', 'connection': f'{first}와 {second}을(를) 비롯한 취향을 나란히 놓으면, 익숙한 것 속에서 새로운 감각을 발견하려는 흐름이 보입니다. 이 문장은 mock 예시이며 AI 분석이 아닙니다.', 'mood': '부드럽고 열린 분위기', 'detail': '작은 차이를 오래 바라보는 시선', 'feeling': '천천히 발견하는 즐거움', 'one_line': '익숙한 것들의 틈에서 새로운 결을 발견하는 취향.', 'image_prompt': 'Soft pastel moire waves in cream, lavender, blue and blush.'},
-        'discover': {'watch': rec('리틀 포레스트', '임순례'), 'listen': rec('Vespertine', 'Björk'), 'read': rec('모모', '미하엘 엔데'), 'go': rec('교토 철학의 길', country='일본')},
+        'discover': {'watch': rec('리틀 포레스트', '임순례'), 'listen': rec('Vespertine', 'Björk'), 'read': {**rec('모모', '미하엘 엔데'), 'image_search_title': 'Momo'}, 'go': rec('교토 철학의 길', country='일본')},
     }
 
 
@@ -68,6 +69,7 @@ def analyze(things):
         '키워드 4~5개를 제시하세요. 추천은 입력된 대상과 동일하면 안 됩니다. 네 분야로 공통 패턴을 확장하세요. '
         '추천 대상은 실제 존재하는 것을 고르고, 확인되지 않은 사실을 단정하지 마세요. '
         'GO의 country와 search_query를 포함하세요. 나머지 추천의 country/search_query는 빈 문자열이어도 됩니다. '
+        'READ의 image_search_title에는 표지 검색을 위해 가능하면 원제 또는 영문 제목을 넣고, 확실하지 않으면 빈 문자열을 넣으세요. '
         'image_prompt는 추후 이미지 생성용 짧은 영어 묘사입니다.\n취향 데이터: '
         + json.dumps(things, ensure_ascii=False)
     )

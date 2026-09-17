@@ -1,6 +1,8 @@
 """Independent image lookup endpoint for MOIRÉ Discover cards."""
 import json
 import os
+import unicodedata
+from difflib import SequenceMatcher
 from http.server import BaseHTTPRequestHandler
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -57,40 +59,67 @@ def fetch_watch_image(title, creator=''):
     }
 
 
+def match_score(requested, candidate):
+    def normalize(value):
+        if not isinstance(value, str):
+            return ''
+        value = unicodedata.normalize('NFKC', value).casefold()
+        return ' '.join(''.join(char if char.isalnum() else ' ' for char in value).split())
+
+    left, right = normalize(requested), normalize(candidate)
+    if not left or not right:
+        return 0.0
+    if left == right or left.replace(' ', '') == right.replace(' ', ''):
+        return 1.0
+    # Short names and differing numbers (e.g. sequels) require exact matches.
+    if min(len(left.replace(' ', '')), len(right.replace(' ', ''))) < 6:
+        return 0.0
+    if [c for c in left if c.isdigit()] != [c for c in right if c.isdigit()]:
+        return 0.0
+    return SequenceMatcher(None, left, right).ratio()
+
+
 def fetch_listen_image(title, creator=''):
     title_creator = ' '.join(part for part in (title, creator) if part).strip()
-    searches = [
-        (title_creator, 'KR'),
-        (title, 'KR'),
-        (title_creator, 'US'),
-        (title, 'US'),
-    ]
+    searches = [(title_creator, 'KR'), (title_creator, 'US'), (title, 'KR'), (title, 'US')]
     item = None
     seen = set()
     for query, country in searches:
-        search = (query, country)
-        if not query or search in seen:
+        if not query or (query, country) in seen:
             continue
-        seen.add(search)
-        params = urlencode({'term': query, 'country': country, 'media': 'music', 'entity': 'album', 'limit': 5})
-        data = fetch_json(f'https://itunes.apple.com/search?{params}')
-        item = first_dict([result for result in data.get('results', []) if isinstance(result, dict) and result.get('artworkUrl100')])
-        if item:
+        seen.add((query, country))
+        candidates = []
+        for entity in ('song', 'album'):
+            params = urlencode({'term': query, 'country': country, 'media': 'music', 'entity': entity, 'limit': 25})
+            data = fetch_json(f'https://itunes.apple.com/search?{params}')
+            for result in data.get('results', []):
+                if not isinstance(result, dict) or not result.get('artworkUrl100'):
+                    continue
+                # A song must match its track title, not just its enclosing album.
+                name = result.get('trackName') if entity == 'song' else result.get('collectionName')
+                title_score = match_score(title, name)
+                artist_score = match_score(creator, result.get('artistName')) if creator else 1.0
+                if title_score >= 0.92 and artist_score >= 0.92:
+                    candidates.append(((title_score, artist_score), result))
+        if candidates:
+            item = max(candidates, key=lambda candidate: candidate[0])[1]
             break
     if not item:
         return None
     artwork = item['artworkUrl100'].replace('100x100', '600x600').replace('http://', 'https://', 1)
     return {
         'image_url': artwork,
-        'source_url': https_url(item.get('collectionViewUrl') or item.get('artistViewUrl')),
+        'source_url': https_url(item.get('trackViewUrl') or item.get('collectionViewUrl') or item.get('artistViewUrl')),
         'credit': 'View on Apple Music',
     }
 
 
-def fetch_read_image(title, creator=''):
+def fetch_read_image(title, creator='', image_search_title=''):
     searches = [
         {'title': title, 'author': creator},
         {'title': title},
+        {'title': image_search_title, 'author': creator},
+        {'title': image_search_title},
     ]
     seen = set()
     match = None
@@ -100,24 +129,30 @@ def fetch_read_image(title, creator=''):
         if not params_data.get('title') or signature in seen:
             continue
         seen.add(signature)
-        params = urlencode({**params_data, 'fields': 'key,cover_i', 'limit': 10})
+        params = urlencode({**params_data, 'fields': 'key,cover_i,title,author_name', 'limit': 25})
         data = fetch_json(f'https://openlibrary.org/search.json?{params}')
+        candidates = []
         for item in data.get('docs', []):
             if not isinstance(item, dict) or not item.get('cover_i'):
                 continue
             work_key = item.get('key')
             if not isinstance(work_key, str) or not work_key.startswith('/works/'):
                 continue
-            match = (item['cover_i'], work_key)
-            break
-        if match:
+            title_score = match_score(params_data['title'], item.get('title'))
+            authors = item.get('author_name', [])
+            if not isinstance(authors, list):
+                authors = []
+            author_score = max((match_score(creator, author) for author in authors), default=0.0) if creator else 1.0
+            if title_score >= 0.92 and author_score >= 0.92:
+                candidates.append(((author_score, title_score), item))
+        if candidates:
+            match = max(candidates, key=lambda candidate: candidate[0])[1]
             break
     if not match:
         return None
-    cover_id, work_key = match
     return {
-        'image_url': f'https://covers.openlibrary.org/b/id/{cover_id}-L.jpg',
-        'source_url': f'https://openlibrary.org{work_key}',
+        'image_url': f"https://covers.openlibrary.org/b/id/{match['cover_i']}-L.jpg",
+        'source_url': f"https://openlibrary.org{match['key']}",
         'credit': 'View on Open Library',
     }
 
@@ -148,7 +183,7 @@ def fetch_go_image(query):
 IMAGE_FETCHERS = {
     'watch': lambda values: fetch_watch_image(values['title'], values['creator']),
     'listen': lambda values: fetch_listen_image(values['title'], values['creator']),
-    'read': lambda values: fetch_read_image(values['title'], values['creator']),
+    'read': lambda values: fetch_read_image(values['title'], values['creator'], values.get('image_search_title', '')),
     'go': lambda values: fetch_go_image(values['search_query'] or values['title']),
 }
 
@@ -170,7 +205,7 @@ class handler(BaseHTTPRequestHandler):
             card_type = params.get('type', [''])[0].lower()
             values = {
                 key: params.get(key, [''])[0].strip()[:160]
-                for key in ('title', 'creator', 'search_query')
+                for key in ('title', 'creator', 'search_query', 'image_search_title')
             }
             if card_type not in IMAGE_FETCHERS or not values['title']:
                 self.send_json(400, {'image_url': None})

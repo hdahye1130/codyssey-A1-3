@@ -101,6 +101,7 @@ async function fetchImageFromApi(type, item) {
         creator: item.creator || '',
         search_query: item.search_query || ''
     });
+    if (type === 'read' && item.image_search_title) params.set('image_search_title', item.image_search_title);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
