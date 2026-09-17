@@ -58,10 +58,25 @@ def fetch_watch_image(title, creator=''):
 
 
 def fetch_listen_image(title, creator=''):
-    query = ' '.join(part for part in (title, creator) if part).strip()
-    params = urlencode({'term': query, 'country': 'KR', 'media': 'music', 'entity': 'album', 'limit': 5})
-    data = fetch_json(f'https://itunes.apple.com/search?{params}')
-    item = first_dict([result for result in data.get('results', []) if isinstance(result, dict) and result.get('artworkUrl100')])
+    title_creator = ' '.join(part for part in (title, creator) if part).strip()
+    searches = [
+        (title_creator, 'KR'),
+        (title, 'KR'),
+        (title_creator, 'US'),
+        (title, 'US'),
+    ]
+    item = None
+    seen = set()
+    for query, country in searches:
+        search = (query, country)
+        if not query or search in seen:
+            continue
+        seen.add(search)
+        params = urlencode({'term': query, 'country': country, 'media': 'music', 'entity': 'album', 'limit': 5})
+        data = fetch_json(f'https://itunes.apple.com/search?{params}')
+        item = first_dict([result for result in data.get('results', []) if isinstance(result, dict) and result.get('artworkUrl100')])
+        if item:
+            break
     if not item:
         return None
     artwork = item['artworkUrl100'].replace('100x100', '600x600').replace('http://', 'https://', 1)
@@ -73,23 +88,36 @@ def fetch_listen_image(title, creator=''):
 
 
 def fetch_read_image(title, creator=''):
-    query_parts = [f'intitle:"{title}"']
-    if creator:
-        query_parts.append(f'inauthor:"{creator}"')
-    params = urlencode({'q': ' '.join(query_parts), 'printType': 'books', 'maxResults': 5})
-    data = fetch_json(f'https://www.googleapis.com/books/v1/volumes?{params}')
-    candidates = []
-    for item in data.get('items', []):
-        if not isinstance(item, dict):
+    title_creator = ' '.join(part for part in (title, creator) if part).strip()
+    searches = [
+        ' '.join(part for part in (f'intitle:"{title}"', f'inauthor:"{creator}"' if creator else '') if part),
+        f'intitle:"{title}"',
+        title_creator,
+        title,
+    ]
+    match = None
+    seen = set()
+    for query in searches:
+        if not query or query in seen:
             continue
-        volume = item.get('volumeInfo')
-        if isinstance(volume, dict) and isinstance(volume.get('imageLinks'), dict):
+        seen.add(query)
+        params = urlencode({'q': query, 'printType': 'books', 'maxResults': 5})
+        data = fetch_json(f'https://www.googleapis.com/books/v1/volumes?{params}')
+        for item in data.get('items', []):
+            if not isinstance(item, dict):
+                continue
+            volume = item.get('volumeInfo')
+            if not isinstance(volume, dict) or not isinstance(volume.get('imageLinks'), dict):
+                continue
             image_url = volume['imageLinks'].get('thumbnail') or volume['imageLinks'].get('smallThumbnail')
             if image_url:
-                candidates.append((item, volume, image_url))
-    if not candidates:
+                match = (item, volume, image_url)
+                break
+        if match:
+            break
+    if not match:
         return None
-    item, volume, image_url = candidates[0]
+    item, volume, image_url = match
     return {
         'image_url': image_url.replace('http://', 'https://', 1),
         'source_url': https_url(volume.get('infoLink')) or f"https://books.google.com/books?id={item.get('id', '')}",
