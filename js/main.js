@@ -135,7 +135,7 @@ async function loadDiscoverImage(type, item, visual) {
         if (!imageData || !visual.isConnected) return;
         const image = new Image();
         image.alt = `${item.title} 이미지`;
-        image.loading = 'lazy';
+        image.loading = 'eager';
         image.decoding = 'async';
         image.addEventListener('load', () => {
             if (!visual.isConnected) return;
