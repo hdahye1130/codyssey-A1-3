@@ -6,6 +6,17 @@ from http.server import BaseHTTPRequestHandler
 ERROR = '지금은 패턴을 찾지 못했어요. 잠시 후 다시 시도해주세요.'
 
 
+def log_error(error, things):
+    message = str(error)
+    sensitive = [os.getenv('GEMINI_API_KEY', '')]
+    sensitive.extend(value for thing in things for value in thing.values() if isinstance(value, str))
+    for value in sorted(filter(None, sensitive), key=len, reverse=True):
+        message = message.replace(json.dumps(value, ensure_ascii=True)[1:-1], '[REDACTED]')
+        message = message.replace(json.dumps(value, ensure_ascii=False)[1:-1], '[REDACTED]')
+        message = message.replace(value, '[REDACTED]')
+    print(f'MOIRÉ analyze failed: {type(error).__name__}: {json.dumps(message[:2000], ensure_ascii=False)}', flush=True)
+
+
 def text_schema():
     return {'type': 'string'}
 
@@ -60,8 +71,11 @@ def analyze(things):
         'image_prompt는 추후 이미지 생성용 짧은 영어 묘사입니다.\n취향 데이터: '
         + json.dumps(things, ensure_ascii=False)
     )
+    model = os.getenv('GEMINI_MODEL', 'gemini-3.6-flash')
+    if model == 'gemini-2.5-flash':
+        model = 'gemini-3.6-flash'
     response = client.models.generate_content(
-        model=os.getenv('GEMINI_MODEL', 'gemini-2.5-flash'),
+        model=model,
         contents=prompt,
         config={'response_mime_type': 'application/json', 'response_json_schema': SCHEMA},
     )
@@ -84,6 +98,7 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
+        things = []
         try:
             try:
                 size = int(self.headers.get('Content-Length', '0'))
@@ -107,9 +122,11 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json(400, {'error': '좋아하는 것을 3개 이상, 30개 이하로 입력해주세요.'})
                 return
             self.send_json(200, analyze(things))
-        except ValueError:
+        except ValueError as error:
+            log_error(error, things)
             self.send_json(503, {'error': ERROR})
-        except Exception:
+        except Exception as error:
+            log_error(error, things)
             self.send_json(503, {'error': ERROR})
 
     def do_GET(self):
