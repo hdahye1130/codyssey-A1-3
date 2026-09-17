@@ -88,40 +88,37 @@ def fetch_listen_image(title, creator=''):
 
 
 def fetch_read_image(title, creator=''):
-    title_creator = ' '.join(part for part in (title, creator) if part).strip()
     searches = [
-        ' '.join(part for part in (f'intitle:"{title}"', f'inauthor:"{creator}"' if creator else '') if part),
-        f'intitle:"{title}"',
-        title_creator,
-        title,
+        {'title': title, 'author': creator},
+        {'title': title},
     ]
-    match = None
     seen = set()
-    for query in searches:
-        if not query or query in seen:
+    match = None
+    for search in searches:
+        params_data = {key: value for key, value in search.items() if value}
+        signature = tuple(sorted(params_data.items()))
+        if not params_data.get('title') or signature in seen:
             continue
-        seen.add(query)
-        params = urlencode({'q': query, 'printType': 'books', 'maxResults': 5})
-        data = fetch_json(f'https://www.googleapis.com/books/v1/volumes?{params}')
-        for item in data.get('items', []):
-            if not isinstance(item, dict):
+        seen.add(signature)
+        params = urlencode({**params_data, 'fields': 'key,cover_i', 'limit': 10})
+        data = fetch_json(f'https://openlibrary.org/search.json?{params}')
+        for item in data.get('docs', []):
+            if not isinstance(item, dict) or not item.get('cover_i'):
                 continue
-            volume = item.get('volumeInfo')
-            if not isinstance(volume, dict) or not isinstance(volume.get('imageLinks'), dict):
+            work_key = item.get('key')
+            if not isinstance(work_key, str) or not work_key.startswith('/works/'):
                 continue
-            image_url = volume['imageLinks'].get('thumbnail') or volume['imageLinks'].get('smallThumbnail')
-            if image_url:
-                match = (item, volume, image_url)
-                break
+            match = (item['cover_i'], work_key)
+            break
         if match:
             break
     if not match:
         return None
-    item, volume, image_url = match
+    cover_id, work_key = match
     return {
-        'image_url': image_url.replace('http://', 'https://', 1),
-        'source_url': https_url(volume.get('infoLink')) or f"https://books.google.com/books?id={item.get('id', '')}",
-        'credit': 'View on Google Books',
+        'image_url': f'https://covers.openlibrary.org/b/id/{cover_id}-L.jpg',
+        'source_url': f'https://openlibrary.org{work_key}',
+        'credit': 'View on Open Library',
     }
 
 
