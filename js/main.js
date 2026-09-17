@@ -94,80 +94,6 @@ function renderThings() {
 const loadingMessages = ['취향의 조각들을 겹쳐보는 중…', '서로 닮은 결을 찾고 있어요…', '새로운 패턴이 나타나고 있어요…'];
 function setText(id, value) { $(id).textContent = typeof value === 'string' ? value : ''; }
 
-async function fetchImageFromApi(type, item) {
-    const params = new URLSearchParams({
-        type,
-        title: item.title || '',
-        creator: item.creator || '',
-        search_query: item.search_query || ''
-    });
-    if (type === 'listen' || type === 'read') {
-        for (const key of ['image_search_title', 'image_search_creator']) {
-            if (item[key]) params.set(key, item[key]);
-        }
-    }
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-    try {
-        const response = await fetch(`/api/images?${params}`, { signal: controller.signal });
-        if (!response.ok) throw new Error(`Image request returned ${response.status}`);
-        const data = await response.json();
-        if (!data || typeof data.image_url !== 'string' || !data.image_url.startsWith('https://')) {
-            console.info('MOIRÉ image unavailable', { type, reason: data?.reason || 'no-image' });
-            return null;
-        }
-        return data;
-    } finally {
-        clearTimeout(timeout);
-    }
-}
-
-function fetchWatchImage(item) { return fetchImageFromApi('watch', item); }
-function fetchListenImage(item) { return fetchImageFromApi('listen', item); }
-function fetchReadImage(item) { return fetchImageFromApi('read', item); }
-function fetchGoImage(item) { return fetchImageFromApi('go', item); }
-
-const imageFetchers = {
-    watch: fetchWatchImage,
-    listen: fetchListenImage,
-    read: fetchReadImage,
-    go: fetchGoImage
-};
-
-async function loadDiscoverImage(type, item, visual) {
-    try {
-        const imageData = await imageFetchers[type](item);
-        if (!imageData || !visual.isConnected) return;
-        const image = new Image();
-        image.alt = `${item.title} 이미지`;
-        image.loading = 'eager';
-        image.decoding = 'async';
-        image.addEventListener('load', () => {
-            if (!visual.isConnected) return;
-            visual.replaceChildren(image);
-            visual.classList.add('has-image');
-            if (typeof imageData.source_url === 'string' && imageData.source_url.startsWith('https://') && imageData.credit) {
-                const credit = document.createElement('a');
-                credit.className = 'image-credit';
-                credit.href = imageData.source_url;
-                credit.target = '_blank';
-                credit.rel = 'noopener noreferrer';
-                credit.textContent = imageData.credit;
-                visual.append(credit);
-            }
-        }, { once: true });
-        image.addEventListener('error', () => {
-            console.info('MOIRÉ image unavailable', { type, reason: 'image-load-failed' });
-        }, { once: true });
-        image.src = imageData.image_url;
-    } catch (error) {
-        console.info('MOIRÉ image unavailable', {
-            type,
-            reason: error.name === 'AbortError' ? 'timeout' : 'lookup-failed'
-        });
-    }
-}
-
 function renderResult(data, isPreview = false) {
     const pattern = data.pattern; const discover = data.discover;
     if (!pattern || !discover || !Array.isArray(pattern.keywords)) throw new Error('Invalid result');
@@ -187,7 +113,6 @@ function renderResult(data, isPreview = false) {
         const reason = document.createElement('p'); reason.textContent = item.reason || '';
         const match = document.createElement('p'); match.className = 'why-match'; match.textContent = item.why_match || '';
         body.append(eyebrow, title, creator, reason, match); card.append(visual, body); list.append(card);
-        if (!isPreview) loadDiscoverImage(key, item, visual);
     });
     if (list.children.length !== 4) throw new Error('Incomplete result');
     $('#preview-notice').classList.toggle('hidden', !isPreview);
