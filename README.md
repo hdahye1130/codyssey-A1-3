@@ -43,3 +43,7 @@ VS Code Live Server로 `http://127.0.0.1:5500` 또는 `http://localhost:5500`에
 
 Vercel에 배포한 서비스는 환경변수의 `GEMINI_API_KEY`를 사용해 실제 Gemini API를 호출합니다. 환경변수를 설정하고 `MOIRE_MOCK_MODE`가 `1`이 아닌 상태로 배포하세요.
 기존 Vercel 환경변수에 `GEMINI_MODEL`이 지정되어 있다면 `gemini-3.5-flash-lite`로 변경하거나 삭제한 뒤 다시 배포해야 새 기본 모델을 사용합니다.
+
+## 배포 URL
+
+https://codyssey-a1-3-bice.vercel.app/
