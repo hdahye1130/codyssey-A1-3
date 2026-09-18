@@ -30,7 +30,7 @@ DISCOVER의 모아레 visual과 분야별 텍스트는 서로 다른 취향이 �
 `.env.example`을 참고해 로컬에서는 `.env.local`, 배포에서는 Vercel 프로젝트의 Environment Variables에 설정합니다.
 
 - `GEMINI_API_KEY`: 서버에서 Gemini API를 호출하는 데 필요한 키입니다.
-- `GEMINI_MODEL`: 기본값은 `gemini-3.6-flash`입니다. 기존 `gemini-2.5-flash` 설정도 코드에서 `gemini-3.6-flash`로 전환하며, 그 외 명시한 모델은 유지합니다.
+- `GEMINI_MODEL`: 환경변수가 없으면 `gemini-3.5-flash-lite`를 사용하며, 환경변수로 지정한 모델은 그대로 사용합니다. Gemini 호출에서 `429` 또는 `RESOURCE_EXHAUSTED` 오류가 발생하면 `gemini-3.1-flash-lite`로 딱 한 번 재시도합니다. SDK 자체 재시도는 비활성화하며, fallback도 실패하거나 다른 오류가 발생하면 기존 오류 안내를 표시합니다.
 - `MOIRE_MOCK_MODE`: 로컬 백엔드 예시 응답을 사용할 때만 `1`로 설정합니다. 실제 Gemini 분석을 사용하는 배포 환경에서는 `0`으로 설정하거나 생략합니다.
 
 API 키는 프론트엔드 코드에 넣거나 GitHub에 커밋하지 않습니다. `.env.local` 등 실제 환경변수 파일은 `.gitignore`로 제외하며, 값이 비어 있는 `.env.example`만 공유합니다.
@@ -42,3 +42,4 @@ VS Code Live Server로 `http://127.0.0.1:5500` 또는 `http://localhost:5500`에
 로컬에서 실제 API를 사용하려면 `pip install -r requirements.txt`로 의존성을 설치하고, `.env.local`에 Gemini 환경변수를 설정한 뒤 Vercel CLI의 `vercel dev`를 실행합니다. `localhost:3000`에서는 `/api/analyze`를 호출합니다. 정적 파일만 여는 방식으로는 Python API가 실행되지 않습니다.
 
 Vercel에 배포한 서비스는 환경변수의 `GEMINI_API_KEY`를 사용해 실제 Gemini API를 호출합니다. 환경변수를 설정하고 `MOIRE_MOCK_MODE`가 `1`이 아닌 상태로 배포하세요.
+기존 Vercel 환경변수에 `GEMINI_MODEL`이 지정되어 있다면 `gemini-3.5-flash-lite`로 변경하거나 삭제한 뒤 다시 배포해야 새 기본 모델을 사용합니다.
